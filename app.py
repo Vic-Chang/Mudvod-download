@@ -4,6 +4,7 @@ import m3u8
 import queue
 import threading
 
+
 que = queue.Queue()
 request = requests.session()
 
@@ -20,7 +21,7 @@ def get_all_ts_files_url(m3u8_url: str):
 
 
 def download_ts_file():
-    while que.not_empty:
+    while not que.empty():
         ts_url = que.get()
         file_name = os.path.basename(ts_url).split("?")[0]
         with request.get(ts_url, stream=True) as r:
@@ -28,23 +29,25 @@ def download_ts_file():
             with open(os.path.join(temp_ts_folder, file_name), 'wb') as f:
                 for chunk in r.iter_content(chunk_size=1024):
                     f.write(chunk)
-                print(f'{threading.get_ident()}: Download success! {file_name}')
+                print(f'\r{threading.get_ident()}: Download success! {file_name}', end='')
 
 
 def download_ts_file_job():
     threads = []
     for _ in range(10):
         t = threading.Thread(target=download_ts_file)
+        t.daemon = True
         threads.append(t)
     for t in threads:
         t.start()
     print('All threading are starts!')
     for t in threads:
         t.join()
-    print('All threading done!')
+    print('All threading are done!')
 
 
 if __name__ == '__main__':
-    url = 'https://api.mudvod.tv/play/mud.m3u8/WEB/1.0?ce=6d657528bb2f55f7020392a18e350cf824adffef259330a6ba1509ff3621ce5f6927aa56b8c7e598847139ca75e82783b6088e5fedf034674fcb0a046246c5ad178e5e6828ef577327c0bb6e1a025b284b9245be9687d66a4d8a14fdbeb2ab4ed08f6bbaa395ee43e5d899e1efe860dcc889f8a570ac9bdc&pf=3&uk=ad552ef8019333d927d0aec6afb2d17d&rx=17592&expire=1658024604069&ip=118.163.56.205&sign=274f961f7aee1577ebf21dc3389aed65&_ts=1657999404069'
+    url = 'https://api.mudvod.tv/play/mud.m3u8/WEB/1.0?ce=6d657528bb2f55f7020392a18e350cf824adffef259330a6ba1509ff3621ce5f6927aa56b8c7e598847139ca75e82783b6088e5fedf034674fcb0a046246c5ad178e5e6828ef577327c0bb6e1a025b284b9245be9687d66a4d8a14fdbeb2ab4ed08f6bbaa395ee43e5d899e1efe860dcc889f8a570ac9bdc&pf=3&uk=ad552ef8019333d927d0aec6afb2d17d&rx=6056&expire=1658137275078&ip=118.163.56.205&sign=ab124fb2584cab1e4601055045be300f&_ts=1658112075078'
+    # url = 'test.m3u8'
     get_all_ts_files_url(url)
     download_ts_file_job()
