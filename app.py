@@ -6,6 +6,7 @@ import queue
 import threading
 import re
 from functools import cmp_to_key
+from playwright.sync_api import sync_playwright
 
 que = queue.Queue()
 request = requests.session()
@@ -100,7 +101,7 @@ def all_ts_to_txt_file(func):
         :param file_name: file name
         :return: is file valid
         """
-        if file_name.split(".")[-1].lower() != 'ts':
+        if file_name.split('.')[-1].lower() != 'ts':
             return False
 
         if not os.path.isfile(os.path.join(TEMP_TS_FOLDER, file_name)):
@@ -140,8 +141,33 @@ def merge_all_ts_files() -> None:
     print('Combine complete!')
 
 
+m3u8_url = ''
+
+
+def on_network_request(network_request) -> None:
+    if 'm3u8' in network_request.url:
+        global m3u8_url
+        m3u8_url = network_request.url
+
+
+def open_browser_to_get_m3u8(url):
+    with sync_playwright() as p:
+        # Use firefox browser, chromium can't be play video (show flash video not support)
+        browser = p.firefox.launch(headless=False, devtools=False)
+        page = browser.new_page()
+        page.on('request', on_network_request)
+        page.goto(url)
+        # Wait for render video part
+        page.wait_for_selector('//*/video-js/video')
+        # Wait a seconds
+        page.wait_for_timeout(1 * 1000)
+        page.close()
+        browser.close()
+
+
 if __name__ == '__main__':
-    url = 'https://api.mudvod.tv/play/mud.m3u8/WEB/1.0?ce=922e59d341843d64edfcb4f68c4047fa32e8bd3f624a99179e61d2145ea29b85077490717c75a420867fb254c3380ad27bef336c1214cdb189929d38ab24483000b3de6222f2559ff5991bfa9039c702eb99c47a618d8f60fa35ef363882138e49a0564ac01ccf9550ad607f541d5d0ee671c6d0470d8cca&pf=3&uk=192e557fe6572e818ecac3b423eccbde&rx=7234&expire=1659696807889&ip=118.163.56.205&sign=458744e8555a883eaba8ec3e0f2e97e1&_ts=1659671607889'
-    get_all_ts_files_url(url)
+    video_url = 'https://www.mudvod.tv/IKHaUGYTcG3qVm0e8AMcs9ee0jtSw4Bf-0-0-0-0-detail.html?x=1'
+    open_browser_to_get_m3u8(video_url)
+    get_all_ts_files_url(m3u8_url)
     download_ts_file_job()
     merge_all_ts_files()
