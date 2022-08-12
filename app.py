@@ -5,9 +5,13 @@ import m3u8
 import queue
 import threading
 import re
+import colorama
+from colorama import Fore
 from functools import cmp_to_key
 from playwright.sync_api import sync_playwright
 
+# Auto reset color after output every line
+colorama.init(autoreset=True)
 que = queue.Queue()
 request = requests.session()
 
@@ -29,7 +33,7 @@ def get_all_ts_files_url(m3u8_url: str) -> None:
     playlist = m3u8.load(m3u8_url)
     for item in playlist.segments:
         que.put(item.uri)
-    print('Set all ts files url in que!')
+    print('Set all ts files url in que !')
 
 
 def download_ts_file() -> None:
@@ -64,15 +68,16 @@ def download_ts_file_job() -> None:
         threads.append(t)
     for t in threads:
         t.start()
-    print('All threading are starts!')
-    print(f'\rDownload progress  ... {(completed_file_count / total_files_count) * 100} %', end="")
+    print('All threading are starts !')
+    print(f'\r{Fore.YELLOW}Download progress  ... {(completed_file_count / total_files_count) * 100} %', end="")
     for t in threads:
         t.join()
         completed_file_count = completed_file_count + 1
-        print(f'\rDownload progress  ... {round((completed_file_count / total_files_count) * 100, 2)} %', end="")
-    print('')
-    print('All threading are done!')
-    print('Ts files download Complete !')
+        print(f'\r{Fore.YELLOW}Download progress... {round((completed_file_count / total_files_count) * 100, 2)} %',
+              end="")
+    print(f'')
+    print('All threading are done !')
+    print(f'{Fore.GREEN}Ts files download Complete !')
 
 
 def all_ts_to_txt_file(func):
@@ -147,10 +152,14 @@ def merge_all_ts_files() -> None:
     :return: Out a mp4 video file
     """
 
+    print('_____________________________')
     print('Start combine all ts files...')
-    os.system(f'ffmpeg -f concat -safe 0 -i {TEMP_TS_LIST_TXT} -c copy -bsf:a aac_adtstoasc video.mp4')
-    print('Combine complete!')
-    print('The video file has been saved to the program folder!')
+    # Use -y to force overwrite file if fild exists
+    os.system(
+        f'ffmpeg  -y -f concat -safe 0 -loglevel quiet -i {TEMP_TS_LIST_TXT} -c copy -bsf:a aac_adtstoasc video.mp4 ')
+    print(f'{Fore.GREEN}Combine ts files complete !')
+    print('_____________________________')
+    print(f'{Fore.GREEN}The video file has been saved to the program folder !')
 
 
 def open_browser_to_get_m3u8(url) -> str:
@@ -178,7 +187,7 @@ def open_browser_to_get_m3u8(url) -> str:
 
 
 if __name__ == '__main__':
-    video_url = ''
+    video_url = 'https://www.mudvod.tv/dQy8ahbxyjH8KnxHLX1i2ZjDeEdOytyc-0-0-0-0-detail.html?x=1'
     video_m3u8_url = open_browser_to_get_m3u8(video_url)
     get_all_ts_files_url(video_m3u8_url)
     download_ts_file_job()
