@@ -44,24 +44,35 @@ def download_ts_file() -> None:
             with open(os.path.join(TEMP_TS_FOLDER, file_name), 'wb') as f:
                 for chunk in r.iter_content(chunk_size=1024):
                     f.write(chunk)
-                print(f'{threading.get_ident()}: Download success! {file_name}')
+                # print(f'{threading.get_ident()}: Download success! {file_name}')
 
 
 def download_ts_file_job() -> None:
     """
     The thread download job, create multiple thread to download ts files
     """
+    total_files_count = que.qsize()
+    completed_file_count = 0
     threads = []
-    for _ in range(10):
+    thread_count = 10
+    if total_files_count < thread_count:
+        thread_count = total_files_count
+
+    for _ in range(thread_count):
         t = threading.Thread(target=download_ts_file)
         t.daemon = True
         threads.append(t)
     for t in threads:
         t.start()
     print('All threading are starts!')
+    print(f'\rDownload progress  ... {(completed_file_count / total_files_count) * 100} %', end="")
     for t in threads:
         t.join()
+        completed_file_count = completed_file_count + 1
+        print(f'\rDownload progress  ... {round((completed_file_count / total_files_count) * 100, 2)} %', end="")
+    print('')
     print('All threading are done!')
+    print('Ts files download Complete !')
 
 
 def all_ts_to_txt_file(func):
@@ -139,23 +150,23 @@ def merge_all_ts_files() -> None:
     print('Start combine all ts files...')
     os.system(f'ffmpeg -f concat -safe 0 -i {TEMP_TS_LIST_TXT} -c copy -bsf:a aac_adtstoasc video.mp4')
     print('Combine complete!')
+    print('The video file has been saved to the program folder!')
 
 
-m3u8_url = ''
+def open_browser_to_get_m3u8(url) -> str:
+    m3u8_url = ''
 
+    def on_network_request(network_request) -> None:
+        nonlocal m3u8_url
+        if 'm3u8' in network_request.url:
+            m3u8_url = network_request.url
 
-def on_network_request(network_request) -> None:
-    if 'm3u8' in network_request.url:
-        global m3u8_url
-        m3u8_url = network_request.url
-
-
-def open_browser_to_get_m3u8(url):
     with sync_playwright() as p:
         # Use firefox browser, chromium can't be play video (show flash video not support)
-        browser = p.firefox.launch(headless=False, devtools=False)
+        browser = p.firefox.launch(headless=True, devtools=False)
         page = browser.new_page()
         page.on('request', on_network_request)
+
         page.goto(url)
         # Wait for render video part
         page.wait_for_selector('//*/video-js/video')
@@ -163,11 +174,12 @@ def open_browser_to_get_m3u8(url):
         page.wait_for_timeout(1 * 1000)
         page.close()
         browser.close()
+    return m3u8_url
 
 
 if __name__ == '__main__':
-    video_url = 'https://www.mudvod.tv/IKHaUGYTcG3qVm0e8AMcs9ee0jtSw4Bf-0-0-0-0-detail.html?x=1'
-    open_browser_to_get_m3u8(video_url)
-    get_all_ts_files_url(m3u8_url)
+    video_url = ''
+    video_m3u8_url = open_browser_to_get_m3u8(video_url)
+    get_all_ts_files_url(video_m3u8_url)
     download_ts_file_job()
     merge_all_ts_files()
