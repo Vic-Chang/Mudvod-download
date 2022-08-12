@@ -22,24 +22,28 @@ TEMP_TS_FOLDER = 'temp_ts'
 TEMP_TS_LIST_TXT = 'temp_ts_list.txt'
 
 
-def remove_old_temp_data():
-    # Remove old temp data if exist
+def remove_temp_data() -> None:
+    """
+    Remove temp files if exist
+    """
     if os.path.exists(TEMP_TS_FOLDER):
         shutil.rmtree(TEMP_TS_FOLDER, ignore_errors=True)
     if os.path.exists(TEMP_TS_LIST_TXT):
         os.remove(TEMP_TS_LIST_TXT)
-    print('delete all files')
 
 
-def signal_handler(stop_signal, frame):
+def signal_handler(stop_signal, frame) -> None:
+    """
+    Remove all temp files before user cancel the program
+    """
     print(f'\n{Fore.RED}You have stopped the program.')
     # Delay a seconds, waiting for all temp files write to disk
     time.sleep(2)
-    remove_old_temp_data()
+    remove_temp_data()
     sys.exit(0)
 
 
-remove_old_temp_data()
+remove_temp_data()
 os.mkdir(TEMP_TS_FOLDER)
 
 signal.signal(signal.SIGINT, signal_handler)
@@ -159,7 +163,7 @@ def all_ts_to_txt_file(func):
         func()
 
         # Start to delete all temp files
-        remove_old_temp_data()
+        remove_temp_data()
 
     return wrap
 
@@ -183,17 +187,28 @@ def merge_all_ts_files() -> None:
 
 
 def open_browser_to_get_m3u8(url) -> str:
+    """
+    It will open a browser to get the video's m3u8 url from network requests
+    :param url: Video url
+    :return: M3u8 url
+    """
     m3u8_url = ''
 
     def on_network_request(network_request) -> None:
+        """
+        Get the m3u8 url from browser's network requests
+        """
         nonlocal m3u8_url
         if 'm3u8' in network_request.url:
             m3u8_url = network_request.url
 
     with sync_playwright() as p:
+        print('Process start !')
         # Use firefox browser, chromium can't be play video (show flash video not support)
         browser = p.firefox.launch(headless=True, devtools=False)
         page = browser.new_page()
+
+        print(f'{Fore.GREEN}Start capturing specific video url...')
         page.on('request', on_network_request)
 
         page.goto(url)
