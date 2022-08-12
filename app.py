@@ -155,6 +155,7 @@ def merge_all_ts_files() -> None:
     print('_____________________________')
     print('Start combine all ts files...')
     # Use -y to force overwrite file if fild exists
+    # Use loglevel quite to hide output
     os.system(
         f'ffmpeg  -y -f concat -safe 0 -loglevel quiet -i {TEMP_TS_LIST_TXT} -c copy -bsf:a aac_adtstoasc video.mp4 ')
     print(f'{Fore.GREEN}Combine ts files complete !')
@@ -187,7 +188,7 @@ def open_browser_to_get_m3u8(url) -> str:
 
 
 if __name__ == '__main__':
-    video_url = 'https://www.mudvod.tv/dQy8ahbxyjH8KnxHLX1i2ZjDeEdOytyc-0-0-0-0-detail.html?x=1'
+    video_url = ''
     video_m3u8_url = open_browser_to_get_m3u8(video_url)
     get_all_ts_files_url(video_m3u8_url)
     download_ts_file_job()
