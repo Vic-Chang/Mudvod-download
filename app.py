@@ -1,11 +1,14 @@
 import os
 import shutil
 import requests
+import time
 import m3u8
 import queue
 import threading
 import re
 import colorama
+import signal
+import sys
 from colorama import Fore
 from functools import cmp_to_key
 from playwright.sync_api import sync_playwright
@@ -18,10 +21,28 @@ request = requests.session()
 TEMP_TS_FOLDER = 'temp_ts'
 TEMP_TS_LIST_TXT = 'temp_ts_list.txt'
 
-# Remove old temp data if exist
-if os.path.exists(TEMP_TS_FOLDER):
-    shutil.rmtree(TEMP_TS_FOLDER, ignore_errors=True)
+
+def remove_old_temp_data():
+    # Remove old temp data if exist
+    if os.path.exists(TEMP_TS_FOLDER):
+        shutil.rmtree(TEMP_TS_FOLDER, ignore_errors=True)
+    if os.path.exists(TEMP_TS_LIST_TXT):
+        os.remove(TEMP_TS_LIST_TXT)
+    print('delete all files')
+
+
+def signal_handler(stop_signal, frame):
+    print(f'\n{Fore.RED}You have stopped the program.')
+    # Delay a seconds, waiting for all temp files write to disk
+    time.sleep(2)
+    remove_old_temp_data()
+    sys.exit(0)
+
+
+remove_old_temp_data()
 os.mkdir(TEMP_TS_FOLDER)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 
 def get_all_ts_files_url(m3u8_url: str) -> None:
@@ -48,7 +69,6 @@ def download_ts_file() -> None:
             with open(os.path.join(TEMP_TS_FOLDER, file_name), 'wb') as f:
                 for chunk in r.iter_content(chunk_size=1024):
                     f.write(chunk)
-                # print(f'{threading.get_ident()}: Download success! {file_name}')
 
 
 def download_ts_file_job() -> None:
@@ -139,8 +159,7 @@ def all_ts_to_txt_file(func):
         func()
 
         # Start to delete all temp files
-        os.remove(TEMP_TS_LIST_TXT)
-        shutil.rmtree(TEMP_TS_FOLDER, ignore_errors=True)
+        remove_old_temp_data()
 
     return wrap
 
