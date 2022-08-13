@@ -152,7 +152,7 @@ def all_ts_to_txt_file(func):
 
         return True
 
-    def wrap():
+    def wrap(*args, **kwargs):
         # Get all files name and remove useless and order files by file name
         files_name_list = [file_name for file_name in os.listdir(TEMP_TS_FOLDER) if is_ts_file(file_name)]
         files_name_list.sort(key=cmp_to_key(name_compare))
@@ -160,7 +160,7 @@ def all_ts_to_txt_file(func):
         with open(TEMP_TS_LIST_TXT, 'w') as f:
             f.writelines((f"file '{os.path.join(TEMP_TS_FOLDER, file_name)}'\r" for file_name in files_name_list))
 
-        func()
+        func(*args, **kwargs)
 
         # Start to delete all temp files
         remove_temp_data()
@@ -169,7 +169,7 @@ def all_ts_to_txt_file(func):
 
 
 @all_ts_to_txt_file
-def merge_all_ts_files() -> None:
+def merge_all_ts_files(output_video_name) -> None:
     """
     Merge all ts files to one mp4 file
     :return: Out a mp4 video file
@@ -180,17 +180,17 @@ def merge_all_ts_files() -> None:
     # Use -y to force overwrite file if fild exists
     # Use loglevel quite to hide output
     os.system(
-        f'ffmpeg  -y -f concat -safe 0 -loglevel quiet -i {TEMP_TS_LIST_TXT} -c copy -bsf:a aac_adtstoasc video.mp4 ')
+        f'ffmpeg  -y -f concat -safe 0 -loglevel quiet -i {TEMP_TS_LIST_TXT} -c copy -bsf:a aac_adtstoasc {output_video_name}.mp4 ')
     print(f'{Fore.GREEN}Combine ts files complete !')
     print('_____________________________')
     print(f'{Fore.GREEN}The video file has been saved to the program folder !')
 
 
-def open_browser_to_get_m3u8(url) -> str:
+def open_browser_to_get_m3u8(url) -> tuple:
     """
     It will open a browser to get the video's m3u8 url from network requests
     :param url: Video url
-    :return: M3u8 url
+    :return: A tuple, Video name , M3u8 url
     """
     m3u8_url = ''
 
@@ -205,25 +205,27 @@ def open_browser_to_get_m3u8(url) -> str:
     with sync_playwright() as p:
         print('Process start !')
         # Use firefox browser, chromium can't be play video (show flash video not support)
-        browser = p.firefox.launch(headless=True, devtools=False)
+        browser = p.firefox.launch(headless=False, devtools=False)
         page = browser.new_page()
 
         print(f'{Fore.GREEN}Start capturing specific video url...')
         page.on('request', on_network_request)
-
         page.goto(url)
-        # Wait for render video part
+        # Wait for get video m3u8 url request
         page.wait_for_selector('//*/video-js/video')
+        # Wait for render movie title
+        title_element = page.wait_for_selector('.title-link')
+        video_title = title_element.inner_text()
         # Wait a seconds
         page.wait_for_timeout(1 * 1000)
         page.close()
         browser.close()
-    return m3u8_url
+    return video_title, m3u8_url
 
 
 if __name__ == '__main__':
     video_url = ''
-    video_m3u8_url = open_browser_to_get_m3u8(video_url)
+    video_name, video_m3u8_url = open_browser_to_get_m3u8(video_url)
     get_all_ts_files_url(video_m3u8_url)
     download_ts_file_job()
-    merge_all_ts_files()
+    merge_all_ts_files(video_name)
