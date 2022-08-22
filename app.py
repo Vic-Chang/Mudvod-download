@@ -1,3 +1,4 @@
+import argparse
 import os
 import shutil
 import requests
@@ -224,7 +225,11 @@ def open_browser_to_get_m3u8(url) -> tuple:
 
 
 if __name__ == '__main__':
-    video_url = ''
+    parser = argparse.ArgumentParser()
+    parser.add_argument('url', type=str, help='Video url')
+    args = parser.parse_args()
+
+    video_url = args.url
     video_name, video_m3u8_url = open_browser_to_get_m3u8(video_url)
     get_all_ts_files_url(video_m3u8_url)
     download_ts_file_job()
