@@ -181,7 +181,7 @@ def merge_all_ts_files(output_video_name) -> None:
     # Use -y to force overwrite file if fild exists
     # Use loglevel quite to hide output
     os.system(
-        f'ffmpeg  -y -f concat -safe 0 -loglevel quiet -i {TEMP_TS_LIST_TXT} -c copy -bsf:a aac_adtstoasc {output_video_name}.mp4 ')
+        f'ffmpeg -y -f concat -safe 0 -loglevel quiet -i {TEMP_TS_LIST_TXT} -c copy -bsf:a aac_adtstoasc "{output_video_name}.mp4"')
     print(f'{Fore.GREEN}Combine ts files complete !')
     print('_____________________________')
     print(f'{Fore.GREEN}The video file has been saved to the program folder !')
