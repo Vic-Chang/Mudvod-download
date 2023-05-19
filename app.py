@@ -194,13 +194,19 @@ def open_browser_to_get_m3u8(url) -> tuple:
     :return: A tuple, Video name , M3u8 url
     """
     m3u8_url = ''
+    skip_ad = True
 
     def on_network_request(network_request) -> None:
         """
-        Get the m3u8 url from browser's network requests
+        Get the m3u8 url from browser's network requests.
+        The first m3u8 url is ad, so get the second url
         """
         nonlocal m3u8_url
+        nonlocal skip_ad
         if 'm3u8' in network_request.url:
+            if skip_ad:
+                skip_ad = False
+                return
             m3u8_url = network_request.url
 
     with sync_playwright() as p:
@@ -212,11 +218,11 @@ def open_browser_to_get_m3u8(url) -> tuple:
         print(f'{Fore.GREEN}Start capturing specific video url...')
         page.on('request', on_network_request)
         page.goto(url)
-        # Wait for get video m3u8 url request
-        page.wait_for_selector('//*/video-js/video')
         # Wait for render movie title
         title_element = page.wait_for_selector('.title-link')
         video_title = title_element.inner_text()
+        # Wait for close ad video
+        page.wait_for_selector('.v-ad-detail', state='detached')
         # Wait a seconds
         page.wait_for_timeout(1 * 1000)
         page.close()
